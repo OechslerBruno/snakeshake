@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Arcade</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #282c34;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+
+        #gameTitle {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        #gameCanvas {
+            border: 2px solid white;
+            background-color: black;
+        }
+
+        .score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+        }
+
+        .paused {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            text-align: center;
+            display: none;
+        }
+
+        .logs {
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameTitle">Snake Arcade</div>
+    <div class="score">Score: <span id="score">0</span></div>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <div class="paused" id="pausedMessage">Game Paused. Press SPACE to resume.</div>
+    <div class="logs">
+        <div>High Score: <span id="highScore">0</span></div>
+        <div>Last Scores: <span id="lastScores">None</span></div>
+    </div>
+    <audio id="pointSound" src="point.mp3"></audio>
+    <audio id="deathSound" src="death.mp3"></audio>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const highScoreDisplay = document.getElementById('highScore');
+        const lastScoresDisplay = document.getElementById('lastScores');
+        const pausedMessage = document.getElementById('pausedMessage');
+        const pointSound = document.getElementById('pointSound');
+        const deathSound = document.getElementById('deathSound');
+
+        const gridSize = 20;
+        const canvasSize = 400;
+
+        let snake = [{ x: 200, y: 200 }];
+        let direction = { x: 0, y: 0 };
+        let food = { x: randomGridPosition(), y: randomGridPosition() };
+        let score = 0;
+        let highScore = 0;
+        let lastScores = [];
+        let isPaused = false;
+
+        function randomGridPosition() {
+            return Math.floor(Math.random() * (canvasSize / gridSize)) * gridSize;
+        }
+
+        function drawSnake() {
+            ctx.fillStyle = 'lime';
+            snake.forEach(segment => {
+                ctx.fillRect(segment.x, segment.y, gridSize, gridSize);
+            });
+        }
+
+        function drawFood() {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(food.x, food.y, gridSize, gridSize);
+        }
+
+        function moveSnake() {
+            const head = { x: snake[0].x + direction.x * gridSize, y: snake[0].y + direction.y * gridSize };
+
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                scoreDisplay.textContent = score;
+                pointSound.play();
+                food = { x: randomGridPosition(), y: randomGridPosition() };
+            } else {
+                snake.pop();
+            }
+
+            snake.unshift(head);
+        }
+
+        function checkCollision() {
+            const head = snake[0];
+
+            if (
+                head.x < 0 || head.x >= canvasSize ||
+                head.y < 0 || head.y >= canvasSize ||
+                snake.slice(1).some(segment => segment.x === head.x && segment.y === head.y)
+            ) {
+                updateScores();
+                resetGame();
+            }
+        }
+
+        function updateScores() {
+            deathSound.play();
+            if (score > highScore) {
+                highScore = score;
+                highScoreDisplay.textContent = highScore;
+            }
+            lastScores.unshift(score);
+            if (lastScores.length > 5) lastScores.pop();
+            lastScoresDisplay.textContent = lastScores.join(', ');
+        }
+
+        function resetGame() {
+            snake = [{ x: 200, y: 200 }];
+            direction = { x: 0, y: 0 };
+            food = { x: randomGridPosition(), y: randomGridPosition() };
+            score = 0;
+            scoreDisplay.textContent = score;
+        }
+
+        function gameLoop() {
+            if (isPaused) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawSnake();
+            drawFood();
+            moveSnake();
+            checkCollision();
+        }
+
+        document.addEventListener('keydown', event => {
+            switch (event.key) {
+                case 'ArrowUp':
+                case 'w':
+                    if (direction.y === 0) direction = { x: 0, y: -1 };
+                    break;
+                case 'ArrowDown':
+                case 's':
+                    if (direction.y === 0) direction = { x: 0, y: 1 };
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                    if (direction.x === 0) direction = { x: -1, y: 0 };
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                    if (direction.x === 0) direction = { x: 1, y: 0 };
+                    break;
+                case ' ': // Space key for pause/resume
+                    isPaused = !isPaused;
+                    pausedMessage.style.display = isPaused ? 'block' : 'none';
+                    break;
+            }
+        });
+
+        setInterval(gameLoop, 100);
+    </script>
+</body>
+</html>
